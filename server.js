@@ -8,7 +8,8 @@ var	blue  		= '\033[34m',
 //Static Variables
 var id_index	= 1,
 	id_prefix	= "tt",
-	id_size		= 7; 
+	id_size		= 7,
+	id_limit	= 1000; 
 
 //Dynamic Variables
 var id_count	= 0;
@@ -28,7 +29,7 @@ var express 	= require('express')
 var pool = poolModule.Pool({
     name     : 'mongodb',
     create   : function(callback) {
-    	var MONGOHQ_URL="mongodb://admin:stormur2013@vincent.mongohq.com:10044/imdb_test";
+    	var MONGOHQ_URL="mongodb://admin_usr:imdb_test_13@troup.mongohq.com:10061/imdb_test";
 		var MongoClient = require('mongodb').MongoClient;
 
 		MongoClient.connect(MONGOHQ_URL, function(err, client) {
@@ -44,43 +45,79 @@ var pool = poolModule.Pool({
     log : false 
 });
 
-imdb.getReq({ id: 'tt0000001' }, function(err, imdb_item) {
+if(id_count < id_index) {
+	id_count++;
+}
 
-    if(err) {
-	    console.log(red+'errr: '+reset+ JSON.stringify(err));
-    }
-    
-    var item_url = imdb_item.imdburl;
-    
-    request(item_url, function(error, response, body){
-		if(!error && response.statusCode == 200) {
-			$ = cheerio.load(body);
-			
-			var item_img_path = $("#img_primary .image a img").attr('src');
-			var item_cast_list = [];
-			$(".cast_list tr td.itemprop a span").each(function(i, element) {
-				item_cast_list[i] = $(this).text();
-			});
-			
-			console.log(item_cast_list);
-		}
-		else if(response.statusCode != 200) {
-   			console.log(yellow+"warn: "+reset+"statusCode - "+response.statusCode);
-		}
-		else if(error) {
-			console.log(red+"error: "+reset+error);
-		}
-   	});
-});
+for (var i=id_count; i<id_limit; i++) {
+	var id_num = id_prefix + pad(i, id_size);
 
-
+	imdb.getReq({ id: id_num }, function(err, imdb_item) {
+	
+	    if(err) {
+		    console.log(red+'errr: '+reset+ JSON.stringify(err));
+		} else {
+		    var item_url = imdb_item.imdburl;
+		    var item_genres = imdb_item.genres.split(",");
+		    var item_languages = imdb_item.languages.split(",");
+		    var item_country = imdb_item.country.split(",");
+		    var item_runtime = parseInt(imdb_item.runtime.slice(0,imdb_item.runtime.indexOf("min")));
+		    
+		    request(item_url, function(error, response, body){
+				if(!error && response.statusCode == 200) {
+					$ = cheerio.load(body);
+					var item_img_path = $("#img_primary .image a img").attr('src');
+					var item_cast_list = [];
+					$(".cast_list tr td.itemprop a span").each(function(i, element) {
+						item_cast_list[i] = $(this).text();
+					});
+					
+					pool.acquire(function(err, db) {
+						if (err) {
+							console.log(red+"error: "+reset+err);
+						}
+						else {
+							var collection = db.collection('imdb_data');
+								collection.update(
+									{_id: imdb_item.imdbid},
+									{
+										$set: {
+											title: 		imdb_item.title,
+											imdburl: 	item_url,
+											imd_img: 	item_img_path,
+											cast: 		item_cast_list,
+											genres: 	item_genres,
+											languages: 	item_languages,
+											country: 	item_country,
+											votes: 		parseInt(imdb_item.votes),
+											runtime: 	item_runtime,
+											rating: 	parseInt(imdb_item.rating),
+											year: 		parseInt(imdb_item._year_data)	 
+										}
+									},
+										{ upsert: true },
+										function(err, results) {
+											if(err) {
+												console.log(red+'errr: '+reset+'Adding '+imdb_item.title+' into db with error: '+err);
+											} else {
+												console.log(blue+'film: '+yellow+imdb_item.title+reset+' inserted into database');
+											}
+										}
+								);
+						}
+						pool.release(db);
+					});
+				}
+		   	});
+		   	
+		   	id_count++;
+	   	}
+	});
+}
 
 //Functions
 
-Number.prototype.pad = function(size) {
-	var s = String(this);
-	if(typeof(size) !== "number"){size = 2;}
-	
-	while (s.length < size) {s = "0" + s;}
-	return s;
+function pad(num, size) {
+    var s = "000000000" + num;
+    return s.substr(s.length-size);
 }
