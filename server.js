@@ -6,10 +6,12 @@ var	blue  		= '\033[34m',
 	reset 		= '\033[0m';
 	
 //Static Variables
-var id_index	= 1,
-	id_prefix	= "tt",
-	id_size		= 7,
-	id_limit	= 1000; 
+var id_index			= 1,
+	id_prefix			= "tt",
+	url_prefix_start	= 'http://www.imdb.com/title/',
+	url_prefix_end		= '/'
+	id_size				= 7,
+	id_limit			= 10000; 
 
 //Dynamic Variables
 var id_count	= 0;
@@ -19,7 +21,6 @@ var express 	= require('express')
 ,	http 		= require('http')
 ,	app 		= express()
 ,	server 		= http.createServer(app)
-,	imdb 		= require('imdb-api')
 ,	MongoClient = require('mongodb').MongoClient
 ,	request 	= require('request')
 ,	cheerio 	= require('cheerio')
@@ -40,7 +41,7 @@ var pool = poolModule.Pool({
 		});
     },
     destroy  : function(client) { client.close(); },
-    max      : 40,
+    max      : 60,
     idleTimeoutMillis : 30000,
     log : false 
 });
@@ -49,69 +50,80 @@ if(id_count < id_index) {
 	id_count++;
 }
 
-for (var i=id_count; i<id_limit; i++) {
+for (var i=id_count; i<id_limit+1; i++) {
 	var id_num = id_prefix + pad(i, id_size);
-
-	imdb.getReq({ id: id_num }, function(err, imdb_item) {
+	var item_url = url_prefix_start+id_prefix+pad(i, id_size)+url_prefix_end;
 	
-	    if(err) {
-		    console.log(red+'errr: '+reset+ JSON.stringify(err));
-		} else {
-		    var item_url = imdb_item.imdburl;
-		    var item_genres = imdb_item.genres.split(",");
-		    var item_languages = imdb_item.languages.split(",");
-		    var item_country = imdb_item.country.split(",");
-		    var item_runtime = parseInt(imdb_item.runtime.slice(0,imdb_item.runtime.indexOf("min")));
-		    
-		    request(item_url, function(error, response, body){
-				if(!error && response.statusCode == 200) {
-					$ = cheerio.load(body);
-					var item_img_path = $("#img_primary .image a img").attr('src');
-					var item_cast_list = [];
-					$(".cast_list tr td.itemprop a span").each(function(i, element) {
-						item_cast_list[i] = $(this).text();
-					});
-					
-					pool.acquire(function(err, db) {
-						if (err) {
-							console.log(red+"error: "+reset+err);
-						}
-						else {
-							var collection = db.collection('imdb_data');
-								collection.update(
-									{_id: imdb_item.imdbid},
-									{
-										$set: {
-											title: 		imdb_item.title,
-											imdburl: 	item_url,
-											imd_img: 	item_img_path,
-											cast: 		item_cast_list,
-											genres: 	item_genres,
-											languages: 	item_languages,
-											country: 	item_country,
-											votes: 		parseInt(imdb_item.votes),
-											runtime: 	item_runtime,
-											rating: 	parseInt(imdb_item.rating),
-											year: 		parseInt(imdb_item._year_data)	 
-										}
-									},
-										{ upsert: true },
-										function(err, results) {
-											if(err) {
-												console.log(red+'errr: '+reset+'Adding '+imdb_item.title+' into db with error: '+err);
-											} else {
-												console.log(blue+'film: '+yellow+imdb_item.title+reset+' inserted into database');
-											}
-										}
-								);
-						}
-						pool.release(db);
-					});
+	request(item_url, function(error, response, body){
+		if(!error && response.statusCode == 200) {
+			$ = cheerio.load(body);
+			var meta = $('meta');
+   			var keys = Object.keys(meta);
+   			var item_id_url;
+    			
+			keys.forEach(function(key){
+			    if (  meta[key].attribs
+			       	&& meta[key].attribs.property
+			       	&& meta[key].attribs.property === 'og:url') {
+			    		item_id_url = meta[key].attribs.content;
+			    }
+			});
+			
+			var item_id				= item_id_url.replace(/.*\/([^/]+).*/, "$1");
+			var item_title			= $('.header span.itemprop').text();
+			var item_year 			= $('.header span.nobr a').text();
+			var item_runtime_raw 	= $('time').text();
+			var item_runtime 		= parseInt(item_runtime_raw.slice(0,item_runtime_raw.indexOf(" min")));
+			var item_rating			= $('#overview-top .star-box .titlePageSprite').text();
+			var item_img_path 		= $("#img_primary .image a img").attr('src');
+			var item_cast_list 		= [];
+			$("[itemprop=actor] a span").each(function(j, element) {
+				item_cast_list[j] = $(this).text();
+			});
+			var item_directors		= [];
+			$('[itemprop=director] a').each(function(j, element) {
+				item_directors[j] = $(this).text();
+			});
+			var item_genres			= [];
+			$('.article [itemprop=genre] a').each(function(j, element) {
+				item_genres[j] = $(this).text();
+			});
+			
+			pool.acquire(function(err, db) {
+				if (err) {
+					console.log(red+"error: "+reset+err);
 				}
-		   	});
-		   	
-		   	id_count++;
-	   	}
+				else {
+					var collection = db.collection('imdb_data');
+						collection.update(
+							{_id: item_id},
+							{
+								$set: {
+									title: 		item_title,
+									imdburl: 	item_id_url,
+									imd_img: 	item_img_path,
+									cast: 		item_cast_list,
+									director:	item_directors,
+									genres: 	item_genres,
+									votes: 		item_rating,
+									runtime: 	item_runtime,
+									rating: 	item_rating,
+									year: 		item_year	 
+								}
+							},
+								{ upsert: true },
+								function(err, results) {
+									if(err) {
+										console.log(red+'errr: '+reset+'Adding '+item_title+' into db with error: '+err);
+									} else {
+										console.log(blue+'film: '+reset+item_id+" - "+yellow+item_title+reset+' inserted into database');
+									}
+								}
+						);
+				}
+				pool.release(db);
+			});
+		}
 	});
 }
 

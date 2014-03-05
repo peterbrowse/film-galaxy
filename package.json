@@ -18,12 +18,13 @@
     "url": "git@github.com:peterbrowse/film-galaxy.git"
   },
   "dependencies": {
-    "express": "3.x",
-    "mongodb": "1.x",
-    "generic-pool": "2.x",
-    "imdb-api": "1.3",
-    "request": "2.x",
-    "cheerio": "0.x"
+    "express"		: "3.x",
+    "mongodb"		: "1.x",
+    "generic-pool"	: "2.x",
+    "imdb-api"		: "1.3",
+    "request"		: "2.x",
+    "cheerio"		: "0.x",
+    "imdb-node" 	: "0.x"
   },
   "license": "MIT",
   "engines": {
