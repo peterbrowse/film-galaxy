@@ -113,12 +113,7 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 						rank:		item_rank
 					};
 					
-					if(item_rank == top_list.length) {
-						db_loaded = true;
-					}
-					
-					/*
-pool.acquire(function(err, db) {
+					pool.acquire(function(err, db) {
 						if (err) {
 							console.log(red+"error: "+reset+err);
 						}
@@ -153,17 +148,44 @@ pool.acquire(function(err, db) {
 						}
 						pool.release(db);
 					});
-*/
+					
+					if(item_rank == top_list.length) {
+						db_loaded = true;
+					}
 				}
 			});
 		}
 	}
 });
 
+//Express Environment Configuration
+app.configure('development', function(){
+  app.use(express.static(__dirname + '/public'));
+  app.use(express.errorHandler({ dumpExceptions: true, showStack: true })); 
+  app.use(express.logger());
+});
 
+app.configure('production', function(){
+  app.use(express.static(__dirname + '/public'));
+  app.use(express.errorHandler());
+});
 
+//Server Listen Declaration
+server.listen(process.env.PORT || 8080, function (err) {
+  if (err) {
+  	console.log(red+'errr: '+reset+err);
+  } else {
+  	console.log(green+'info: '+reset+'Express server started on '+yellow+'%s:'+yellow+'%s'+reset+'.', server.address().address, server.address().port);
+  	console.log(green+'info: '+reset+'App running in '+yellow+process.env.NODE_ENV+reset+' mode.');
+  }
+});
 
-
+//Local database sender
+app.get('/top_list', function(request, response){
+	if(db_loaded) {
+		response.send(top_list_db);
+	}
+});
 
 //Functions
 
