@@ -12,7 +12,9 @@ var id_index			= 165795,
 	url_prefix_end		= '/'
 	id_size				= 7,
 	id_limit			= 50000,
-	dynamic_limit		= id_index + id_limit; 
+	dynamic_limit		= id_index + id_limit, 
+	download_dir		= __dirname + '/public/images/covers/',
+	dir_prefix			= '../images/covers/';
 	
 //tt0165795
 
@@ -29,7 +31,11 @@ var express 	= require('express')
 ,	MongoClient = require('mongodb').MongoClient
 ,	request 	= require('request')
 ,	cheerio 	= require('cheerio')
-,	poolModule 	= require('generic-pool');
+,	poolModule 	= require('generic-pool')
+,	sass		= require('node-sass')
+,	jade		= require('jade')
+,	fs			= require("fs")
+,	downloader	= require('downloader');
 
 //Pool Setup
 var pool = poolModule.Pool({
@@ -85,7 +91,17 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 					var item_runtime_raw 	= $('time').text();
 					var item_runtime 		= parseInt(item_runtime_raw.slice(0,item_runtime_raw.indexOf(" min")));
 					var item_rating			= $('#overview-top .star-box .titlePageSprite').text();
-					var item_img_path 		= $("#img_primary .image a img").attr('src');
+					var item_imdb_img_path	= $("#img_primary .image a img").attr('src');
+					var item_img_path 		= dir_prefix + $("#img_primary .image a img").attr('src').split('http://ia.media-imdb.com/images/M/')[1];
+					
+					/*
+downloader.download(item_imdb_img_path, download_dir);
+					
+					downloader.on('error', function(msg) {
+					    console.log(msg);
+					});
+*/
+					
 					var item_cast_list 		= [];
 					$("[itemprop=actor] a span").each(function(j, element) {
 						item_cast_list[j] = $(this).text();
@@ -96,7 +112,7 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 					});
 					var item_genres			= [];
 					$('.article [itemprop=genre] a').each(function(j, element) {
-						item_genres[j] = $(this).text();
+						item_genres[j] = $(this).text().replace(/ /g,'');
 					});
 					
 					top_list_db[item_rank-1] = {
@@ -125,7 +141,7 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 										$set: {
 											title: 		item_title,
 											imdburl: 	item_id_url,
-											imd_img: 	item_img_path,
+											imd_img: 	item_imdb_img_path,
 											cast: 		item_cast_list,
 											director:	item_directors,
 											genres: 	item_genres,
@@ -160,14 +176,31 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 
 //Express Environment Configuration
 app.configure('development', function(){
-  app.use(express.static(__dirname + '/public'));
-  app.use(express.errorHandler({ dumpExceptions: true, showStack: true })); 
-  app.use(express.logger());
+	app.set('views', __dirname + '/views');
+	app.set('view engine', 'jade');
+	app.use(sass.middleware({
+		src: __dirname + '/sass',
+		dest: __dirname + '/public',
+		debug: true,
+		outputStyle: 'compressed'
+	}));
+	app.locals.pretty = true;
+	app.use(express.static(__dirname + '/public'));
+	app.use(express.errorHandler({ dumpExceptions: true, showStack: true })); 
+	app.use(express.logger());
 });
 
 app.configure('production', function(){
-  app.use(express.static(__dirname + '/public'));
-  app.use(express.errorHandler());
+	app.set('views', __dirname + '/views');
+	app.set('view engine', 'jade');
+	app.use(sass.middleware({
+		src: __dirname + '/sass',
+		dest: __dirname + '/public',
+		debug: true,
+		outputStyle: 'compressed'
+	}));
+	app.use(express.static(__dirname + '/public'));
+	app.use(express.errorHandler());
 });
 
 //Server Listen Declaration
@@ -180,11 +213,21 @@ server.listen(process.env.PORT || 8080, function (err) {
   }
 });
 
+/*
 //Local database sender
 app.get('/top_list', function(request, response){
 	if(db_loaded) {
 		response.send(top_list_db);
 	}
+});
+*/
+
+//RESTful routes
+app.get('/', function(req, res){
+	res.render('index', {
+			title: 		'Film Galaxy',
+			imdb_db:	JSON.stringify(top_list_db)
+	});
 });
 
 //Functions

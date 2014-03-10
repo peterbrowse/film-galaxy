@@ -1,0 +1,14 @@
+doctype html
+html
+	head
+		title= title
+		link(rel='stylesheet', href='/stylesheets/main.css')
+		include html5shiv
+		script.
+			var imdb_db = !{imdb_db};
+		script(src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js")
+		script(src="/js/three.min.js")
+		script(src="/js/stats.min.js")
+		script(src="/js/draw.js")
+	body
+		block content

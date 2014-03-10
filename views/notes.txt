@@ -1,0 +1,7 @@
+Print out results:
+
+JADE -
+
+script(type="text/javascript").
+			var project_data = !{JSON.stringify(data)};
+			
