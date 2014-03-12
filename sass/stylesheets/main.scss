@@ -5,6 +5,8 @@ $black-color: #000000;
 
 html, body {
 	background: $black-color url('../images/space.jpg');
+	font-family: 'segoe_lightregular';
+	overflow: hidden;
 }
 
 .film_info {
@@ -15,12 +17,27 @@ html, body {
 	top: 0;
 	bottom: 0;
 	z-index: 999999;
-	overflow: scroll;
 	display: none;
+	
+	.close {
+		position: absolute;
+		top: 0;
+		right: 0;
+		color: #FFFFFF;
+		text-align: right;
+		
+		img {
+			width: 40px;
+			height: 40px;
+			cursor: pointer;
+		}
+	}
 	
 	.inner {
 		margin: 20px;
+		margin-top: 40px;
 		color: #FFF;
+		font-family: 'segoe_lightregular';
 		
 		h1 {
 			font-weight: 900;
@@ -43,8 +60,13 @@ html, body {
 		img {
 			width: 100%;
 			margin-bottom: 20px;
-			
-			
+		}
+		
+		p {
+			font-weight: 100;
+			font-size: 13px;
+			line-height: 18px;
+			letter-spacing: 0.5px;
 		}
 	}
 }

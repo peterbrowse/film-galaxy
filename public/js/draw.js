@@ -64,6 +64,9 @@ function init() {
 	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
 	camera.position.set( 0, 200, 3000 );
 	camera.lookAt ( 0,0,0 );
+	
+	controls = new THREE.OrbitControls( camera );
+	controls.addEventListener( 'change', render )
 
 	scene = new THREE.Scene();
 	var ambientLight = new THREE.AmbientLight(0xbbbbbb);
@@ -182,8 +185,6 @@ function onDocumentMouseDown( event ) {
     var intersects = ray.intersectObjects( scene.children , true);
 
     if ( intersects.length > 0 ) {
-		console.log(imdb_db[intersects[0].object.name].title);
-		
 		info_slate(intersects[0].object.name);
     }
 }

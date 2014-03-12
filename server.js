@@ -75,12 +75,17 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 					var meta = $('meta');
 		   			var keys = Object.keys(meta);
 		   			var item_id_url;
+		   			var item_description;
 		    			
 					keys.forEach(function(key){
 					    if (  meta[key].attribs
 					       	&& meta[key].attribs.property
 					       	&& meta[key].attribs.property === 'og:url') {
 					    		item_id_url = meta[key].attribs.content;
+					    } else if ( meta[key].attribs
+					       	&& meta[key].attribs.property
+					       	&& meta[key].attribs.property === 'og:description') {
+					    		item_description = meta[key].attribs.content;
 					    }
 					});
 					
@@ -94,13 +99,11 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 					var item_imdb_img_path	= $("#img_primary .image a img").attr('src');
 					var item_img_path 		= dir_prefix + $("#img_primary .image a img").attr('src').split('http://ia.media-imdb.com/images/M/')[1];
 					
-					/*
-downloader.download(item_imdb_img_path, download_dir);
+					downloader.download(item_imdb_img_path, download_dir);
 					
 					downloader.on('error', function(msg) {
 					    console.log(msg);
 					});
-*/
 					
 					var item_cast_list 		= [];
 					$("[itemprop=actor] a span").each(function(j, element) {
@@ -126,7 +129,8 @@ downloader.download(item_imdb_img_path, download_dir);
 						runtime: 	item_runtime,
 						rating: 	item_rating,
 						year: 		item_year,
-						rank:		item_rank
+						rank:		item_rank,
+						description:item_description
 					};
 					
 					pool.acquire(function(err, db) {
@@ -149,7 +153,8 @@ downloader.download(item_imdb_img_path, download_dir);
 											runtime: 	item_runtime,
 											rating: 	item_rating,
 											year: 		item_year,
-											rank:		item_rank	 
+											rank:		item_rank,
+											description:item_description	 
 										}
 									},
 										{ upsert: true },
