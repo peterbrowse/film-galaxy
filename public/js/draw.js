@@ -28,7 +28,8 @@ var startTime	= Date.now();
 var degree_step = 16.36;
 
 var rad = 0,
-	radIncrement = 1;
+	radIncrement = 1,
+	delay = 0.1;
 
 var container, stats;
 
@@ -39,6 +40,10 @@ var mesh, zmesh, lightMesh, geometry;
 var mouseX = 0, mouseY = 0;
 
 var objects = [];
+
+var mouse = new THREE.Vector2(),
+offset = new THREE.Vector3(),
+INTERSECTED, SELECTED, projector;
 
 
 var axis = new THREE.Vector3(0,0,0);
@@ -57,7 +62,7 @@ function init() {
 	container = document.getElementById('container');
 
 	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
-	camera.position.set( 0, 0, 1000 );
+	camera.position.set( 0, 200, 3000 );
 	camera.lookAt ( 0,0,0 );
 
 	scene = new THREE.Scene();
@@ -73,82 +78,69 @@ function init() {
     
     // directional lighting
 	var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-	directionalLight.position.set( 0, 0.5, 1 );
+	directionalLight.position.set( 0, 0, 1 );
 	scene.add( directionalLight );
 	
-	scene.fog = new THREE.Fog( 0x000000, 1000, 0 );
+	scene.fog = new THREE.Fog( 0x000000, 0, 10000 );
 
 	var colors = [ 0x000000, 0xff0080, 0x8000ff, 0xffffff ];
 	var geometry = new THREE.Geometry();
-
+	
 	/*
-for ( var i = 0; i < imdb_db.length; i ++ ) {
-
-		var vertex = new THREE.Vector3();
-		vertex.x = 360 * Math.cos(get_item_angle(i));
-		vertex.y = 360 * Math.sin(get_item_angle(i));
-		vertex.z = imdb_db[i].rank * 10;
+var axes = buildAxes( 1000 );
+	scene.add(axes);
 */
-		/*
-var material = new THREE.MeshLambertMaterial({
+
+	projector = new THREE.Projector();
+	
+	for ( var i = 0; i < imdb_db.length; i ++ ) {
+		
+		var material = new THREE.MeshLambertMaterial({
         	map: THREE.ImageUtils.loadTexture(imdb_db[i].imd_img)
       	});
-      	var sphere = new THREE.Mesh( geometry, material );
-*/
-		/*
-		var sphereMaterial = new THREE.MeshLambertMaterial( { color: colors[ Math.floor( Math.random() * colors.length ) ] } );
+      	//var sphereMaterial = new THREE.MeshLambertMaterial( { color: colors[ Math.floor( Math.random() * colors.length ) ] } );
+		
+		var vertex = new THREE.Vector3();
+		vertex.x = imdb_db[i].rank * 10;
+		vertex.y = 360 * Math.sin(get_item_angle(i));
+		vertex.z = imdb_db[i].rank * 10;
+		
+		var angle = 0; // The Initial Angle Orbiting Starts From
+		var orbit_speed = randomIntFromIntervalNonFloored(0.01,0.1); // Number Of Pixels Orbited Per Frame
+		var radius = imdb_db[i].rank * 10; // Orbiting Distance From Origin
+		
 		var geometry = new THREE.SphereGeometry( 15, 32, 32 );
-		var sphere = new THREE.Mesh( geometry, sphereMaterial );
+		var sphere = new THREE.Mesh( geometry, material );
 		sphere.position.set(vertex.x, vertex.y, vertex.z);
-		sphere.name = "sphere_" + i;
+		sphere.name = i;
+		
+		objects[i] = {
+			name: 		sphere.name,
+			origin:		vertex,
+			radius:		radius,
+			angle:		angle,
+			speed:		orbit_speed,
+			direction:	randomIntFromInterval(0,1),
+			id:			i
+		}
+	
 		scene.add( sphere );
 	}
-*/
 
-	var axes = buildAxes( 1000 );
-	
-	//scene.add(axes);
-	
-	var vertex = new THREE.Vector3();
-	vertex.x = 200;
-	vertex.y = 0;
-	vertex.z = 200;
-	
-	var angle = 0; // The Initial Angle Orbiting Starts From
-	var orbit_speed = 2; // Number Of Pixels Orbited Per Frame
-	var radius = 200; // Orbiting Distance From Origin
-	
-	var sphereMaterial = new THREE.MeshLambertMaterial( { color: colors[ Math.floor( Math.random() * colors.length ) ] } );
-	var geometry = new THREE.SphereGeometry( 15, 32, 32 );
-	var sphere = new THREE.Mesh( geometry, sphereMaterial );
-	sphere.position.set(vertex.x, vertex.y, vertex.z);
-
-	sphere.name = "sphere_" + 0;
-	
-	objects[0] = {
-		name: 		sphere.name,
-		origin:		vertex,
-		radius:		radius,
-		angle:		angle,
-		speed:		orbit_speed
-	}
-	
-	scene.add( sphere );
-
-
-	renderer = new THREE.WebGLRenderer( { preserveDrawingBuffer: false } );
+	renderer = new THREE.WebGLRenderer( { preserveDrawingBuffer: false, alpha: true } );
 	renderer.setSize( window.innerWidth, window.innerHeight );
 	renderer.sortObjects = false;
 	renderer.autoClearColor = false;
+	renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
 	container.appendChild( renderer.domElement );
 
-	stats = new Stats();
+	/*
+stats = new Stats();
 	stats.domElement.style.position = 'absolute';
 	stats.domElement.style.top = '0px';
 	stats.domElement.style.zIndex = 100;
 	container.appendChild( stats.domElement );
-
-	//
+*/
 
 	window.addEventListener( 'resize', onWindowResize, false );
 
@@ -173,37 +165,59 @@ function onDocumentMouseMove(event) {
 
 }
 
+function onDocumentMouseDown( event ) {
+
+    event.preventDefault();
+
+    var vector = new THREE.Vector3(
+        ( event.clientX / window.innerWidth ) * 2 - 1,
+      - ( event.clientY / window.innerHeight ) * 2 + 1,
+        0.5
+    );
+    projector.unprojectVector( vector, camera );
+
+    var ray = new THREE.Raycaster( camera.position, 
+                             vector.sub( camera.position ).normalize() );
+
+    var intersects = ray.intersectObjects( scene.children , true);
+
+    if ( intersects.length > 0 ) {
+		console.log(imdb_db[intersects[0].object.name].title);
+		
+		info_slate(intersects[0].object.name);
+    }
+}
+
 function animate() {
 
 	requestAnimationFrame( animate );
 
 	render();
-	stats.update();
+	//stats.update();
 
 }
 
 function render() {
-
-	var timer = Date.now() * 0.0008;
-
 	/*
-camera.position.x = Math.cos( timer ) * 1500;
+	var timer = Date.now() * 0.0008;
+	camera.position.x = Math.cos( timer ) * 1500;
 	camera.position.z = Math.sin( timer ) * 1500;
-*/
+	*/
 	
-	var sphere = scene.getObjectByName(objects[0].name, true);
+	for ( var i = 0; i < imdb_db.length; i ++ ) {
+		var sphere 			= scene.getObjectByName(objects[i].name, true);
+		var rad 			= objects[i].angle * (Math.PI / 180); // Converting Degrees To Radians
+		sphere.position.x 	= axis.x + objects[i].radius * Math.cos(rad); // Position The Orbiter Along x-axis
+		sphere.position.z 	= axis.z + objects[i].radius * Math.sin(rad); // Position The Orbiter Along z-axis
+		if(objects[i].direction) {
+			objects[i].angle -= objects[i].speed;
+		} else {
+			objects[i].angle += objects[i].speed;
+		}
+	}
 	
-	var rad 			= objects[0].angle * (Math.PI / 180); // Converting Degrees To Radians
-	sphere.position.x 	= axis.x + objects[0].radius * Math.cos(rad); // Position The Orbiter Along x-axis
-	sphere.position.z 	= axis.z + objects[0].radius * Math.sin(rad); // Position The Orbiter Along y-axis
-	
-	objects[0].angle += objects[0].speed; // Object will orbit clockwise
-	//objects[0].angle -= objects[0].speed; // Object will orbit counter-clockwise
-
 	camera.lookAt( scene.position );
-
 	renderer.render( scene, camera );
-
 }
 
 function get_item_angle(position) {
@@ -248,4 +262,13 @@ function buildAxis( src, dst, colorHex, dashed ) {
 
         return axis;
 
+}
+
+function randomIntFromInterval(min,max)
+{
+    return Math.floor(Math.random()*(max-min+1)+min);
+}
+
+function randomIntFromIntervalNonFloored(min,max) {
+	return Math.random()*(max-min+delay)+min;
 }

@@ -1,7 +1,7 @@
 {
   "name": "film-galaxy",
   "preferGlobal": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Peter Browse <peterbrowse@gmail.com>",
   "description": "Film Galaxy beta test",
   "contributors": [
