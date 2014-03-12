@@ -1,7 +1,7 @@
 {
   "name": "film-galaxy",
   "preferGlobal": true,
-  "version": "0.3.0",
+  "version": "0.3.0-1",
   "author": "Peter Browse <peterbrowse@gmail.com>",
   "description": "Film Galaxy beta test",
   "contributors": [
@@ -18,16 +18,16 @@
     "url": "git@github.com:peterbrowse/film-galaxy.git"
   },
   "dependencies": {
-    "express"		: "3.x",
-    "mongodb"		: "1.x",
-    "generic-pool"	: "2.x",
-    "imdb-api"		: "1.3",
-    "request"		: "2.x",
-    "cheerio"		: "0.x",
-    "imdb-node" 	: "0.x",
-    "node-sass"		: "0.x",
-    "jade"			: "1.x",
-    "downloader"	: "0.x"
+    "express": "3.x",
+    "mongodb": "1.x",
+    "generic-pool": "2.x",
+    "imdb-api": "1.3",
+    "request": "2.x",
+    "cheerio": "0.x",
+    "imdb-node": "0.x",
+    "node-sass": "0.x",
+    "jade": "1.x",
+    "downloader": "0.x"
   },
   "license": "MIT",
   "engines": {
