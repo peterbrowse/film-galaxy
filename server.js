@@ -99,13 +99,11 @@ request('http://www.imdb.com/chart/top', function(error, response, body){
 					var item_imdb_img_path	= $("#img_primary .image a img").attr('src');
 					var item_img_path 		= dir_prefix + $("#img_primary .image a img").attr('src').split('http://ia.media-imdb.com/images/M/')[1];
 					
-					/*
-downloader.download(item_imdb_img_path, download_dir);
+					downloader.download(item_imdb_img_path, download_dir);
 					
 					downloader.on('error', function(msg) {
 					    console.log(msg);
 					});
-*/
 					
 					var item_cast_list 		= [];
 					$("[itemprop=actor] a span").each(function(j, element) {
